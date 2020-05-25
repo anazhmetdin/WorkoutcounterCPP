@@ -26,6 +26,13 @@ Mat& calculateStep(Mat& I, Mat& I1)
   return I1;
 }
 
+void findCentroid(Mat& I, vector<Point>& centroids)
+{
+  Moments m = moments(I,true);
+  Point p(m.m10/m.m00, m.m01/m.m00);
+  centroids.push_back(p);
+}
+
 Mat lowPass(Mat& I, Mat& I1)
 {
   // accept only char type matrices
@@ -64,12 +71,15 @@ int main(int argc, char** argv )
   }
   Mat image[ret.size()];
   Mat steps[ret.size()];
+  vector<Point> centroids;
   steps[0] = Mat::zeros(6,8, CV_8U);
 
   for ( int i = 0; i < ret.size(); i++ ){
     image[i] = imread(ret[i].string(), 1);
     cvtColor(image[i], image[i], COLOR_BGR2GRAY);
   }
+
+  findCentroid(image[0], centroids);
 
   for ( int i = 1; i < ret.size(); i++ ){
     threshold(abs(image[i-1] - image[i]), image[i-1], 0, 255, 0);
@@ -79,6 +89,7 @@ int main(int argc, char** argv )
     steps[i] = Mat(6,8, CV_8U);
     steps[i] = calculateStep(image[i-1], steps[i]);
     steps[i] = lowPass(steps[i-1], steps[i]);
+    findCentroid(image[i-1], centroids);
     cout << steps[i] << endl;
   }
 }
