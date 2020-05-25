@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <opencv2/opencv.hpp>
+#include <boost/filesystem.hpp>
 using namespace cv;
+using namespace std;
+using namespace boost::filesystem;
 
-Mat& ScanImageAndReduceC(Mat& I, Mat& I1)
+Mat& calculateStep(Mat& I, Mat& I1)
 {
   // accept only char type matrices
   CV_Assert(I.depth() == CV_8U);
@@ -16,7 +19,7 @@ Mat& ScanImageAndReduceC(Mat& I, Mat& I1)
     for( i = 0; i < nRows*5/6; i+=(int)nRows/6)
     {
       Mat temp = I(Rect(h, i, (int)nCols/8, (int)nRows/6));
-      p1[counter] = (int)mean(temp)[0];
+      p1[counter] = (mean(temp)[0]);
       counter++;
     }
   }
@@ -25,42 +28,47 @@ Mat& ScanImageAndReduceC(Mat& I, Mat& I1)
 
 int main(int argc, char** argv )
 {
-    if ( argc != 4 )
+  if ( argc != 2 )
     {
-        printf("usage: DisplayImage.out <Image_Path>\n");
+        printf("enter one input of directory path to images\n");
         return -1;
     }
-    Mat image, image1, image2;
-    Mat image3(6,8, CV_8U);
-    image = imread( argv[1], 1 );
-    image1 = imread( argv[2], 1 );
-    image2 = imread( argv[3], 1 );
-    if ( !image.data )
+  path p (argv[1]);
+  vector<path> ret;
+  if (is_directory(p)){
+    recursive_directory_iterator it(p);
+    recursive_directory_iterator endit;
+    while(it != endit)
     {
-        printf("No image data \n");
-        return -1;
+        if(is_regular_file(*it) && it->path().extension() == ".png")
+        {
+          path canonicalPath = canonical(it->path(), path("./"));
+          ret.push_back(canonicalPath);
+        }
+        ++it;
     }
-    if ( !image1.data )
-    {
-        printf("No image data \n");
-        return -1;
-    }
-    if ( !image2.data )
-    {
-        printf("No image data \n");
-        return -1;
-    }
-    cvtColor(image, image, COLOR_BGR2GRAY);
-    cvtColor(image1, image1, COLOR_BGR2GRAY);
-    cvtColor(image2, image2, COLOR_BGR2GRAY);
-    threshold(abs(image - image1), image, 0, 255, 0);
-    image3 = ScanImageAndReduceC(image, image3);
-    std::cout << image3 << std::endl;
-    threshold(abs(image2 - image1), image2, 0, 255, 0);
-    image3 = ScanImageAndReduceC(image2, image3);
-    std::cout << image3 << std::endl;
+  }
+  else
+  {
+      printf("enter valid path\n");
+      return -1;
+  }
+  Mat image[ret.size()];
+  Mat steps[ret.size()];
+  steps[0] = Mat::zeros(6,8, CV_8U);
+
+  for ( int i = 0; i < ret.size(); i++ ){
+    image[i] = imread(ret[i].string(), 1);
+    cvtColor(image[i], image[i], COLOR_BGR2GRAY);
+  }
+
+  for ( int i = 1; i < ret.size(); i++ ){
+    threshold(abs(image[i-1] - image[i]), image[i-1], 0, 255, 0);
     namedWindow("Display Image", WINDOW_AUTOSIZE );
-    imshow("Display Image", image2);
+    imshow("Display Image", image[i-1]);
     waitKey(0);
-    return 0;
+    steps[i] = Mat(6,8, CV_8U);
+    steps[i] = calculateStep(image[i-1], steps[i]);
+    cout << steps[i] << endl;
+  }
 }
