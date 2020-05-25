@@ -26,6 +26,15 @@ Mat& calculateStep(Mat& I, Mat& I1)
   return I1;
 }
 
+Mat lowPass(Mat& I, Mat& I1)
+{
+  // accept only char type matrices
+  CV_Assert(I.depth() == CV_8U);
+  Mat I2(6,8, CV_8U);
+  I2 = I+(I1-I)*0.25;
+  return I2;
+}
+
 int main(int argc, char** argv )
 {
   if ( argc != 2 )
@@ -69,6 +78,7 @@ int main(int argc, char** argv )
     waitKey(0);
     steps[i] = Mat(6,8, CV_8U);
     steps[i] = calculateStep(image[i-1], steps[i]);
+    steps[i] = lowPass(steps[i-1], steps[i]);
     cout << steps[i] << endl;
   }
 }
